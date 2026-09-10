@@ -1,0 +1,25 @@
+{
+  "name": "@deepseek-ai/dsh-client-hqst",
+  "description": "Persistent history-questions sidebar plugin client half: right-side floating panel listing the current session's questions with click-to-jump highlighting.",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  },
+  "license": "MIT"
+}
