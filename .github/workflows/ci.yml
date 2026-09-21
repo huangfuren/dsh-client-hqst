@@ -1,0 +1,41 @@
+# CI 工作流：每次向 main 推送或发起针对 main 的 PR 时，在多个 Node.js 版本上执行校验与打包预演。
+name: CI
+
+# 触发条件：
+# - push 到 main 分支
+# - 针对 main 分支的 pull_request
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# 最小权限原则：仅授予读取仓库内容的权限，避免工作流获得写权限令牌。
+permissions:
+  contents: read
+
+jobs:
+  # 校验任务：在矩阵中列出的每个 Node.js 版本上运行同一套校验。
+  verify:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      # 即使某个版本失败也不中断其它版本，便于看全矩阵结果。
+      fail-fast: false
+      matrix:
+        # 与 package.json engines.node 声明的基线一致（>=22.19），并向前覆盖一个版本。
+        node: [22, 24]
+    steps:
+      # 拉取源码。
+      - uses: actions/checkout@v4
+      # 安装指定版本的 Node。这里刻意不用 cache: npm —— 本包零运行时依赖、仓库内没有 lockfile，
+      # setup-node 的缓存步骤会因找不到 lockfile 而失败。
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      # 无需安装依赖：本包只依赖宿主提供的 react（peerDependencies），仓库内不存在第三方依赖。
+      # 因此不执行 npm ci / npm audit（两者都需要 lockfile）。
+      # 运行 package.json 中的 verify：node --check 两个入口 + node --test。
+      - run: npm run verify
+      # 在不真正发布的情况下打包，验证 files 清单与打包完整性（--ignore-scripts 跳过 prepack）。
+      - run: npm pack --dry-run --ignore-scripts

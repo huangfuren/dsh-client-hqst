@@ -1252,27 +1252,25 @@ window.__ModuleLoader__.load({
 			if (node === null || node === undefined) return [];
 			if (typeof node === "string" && node.length > 0) return [node];
 			const out = [];
-			if (typeof node.text === "string" && node.text.length > 0) out.push(node.text);
-			if (Array.isArray(node.blocks)) {
-				for (const block of node.blocks) {
+			// rowContent() 取的就是 node.content / node.data.content,与下面 data.content 那条分支可能指向**同一个数组**。
+			// 各收一遍会让同一段正文进两次:表现为同一批标题在大纲里重复出现、该轮字数翻倍。
+			// 记下已收过的数组,同一个数组只收一次。
+			const harvested = new Set();
+			const harvest = (blocks) => {
+				if (Array.isArray(blocks) === false || harvested.has(blocks)) return;
+				harvested.add(blocks);
+				for (const block of blocks) {
 					if (block === null || block === undefined) continue;
 					if (typeof block === "string" && block.length > 0) out.push(block);
 					else if ((block.kind === "text" || block.type === "text") && typeof block.text === "string") out.push(block.text);
 				}
-			}
-			for (const block of rowContent(node)) {
-				if (block === null || block === undefined) continue;
-				if (typeof block === "string" && block.length > 0) out.push(block);
-				else if ((block.type === "text" || block.kind === "text") && typeof block.text === "string") out.push(block.text);
-			}
+			};
+			if (typeof node.text === "string" && node.text.length > 0) out.push(node.text);
+			harvest(node.blocks);
+			harvest(rowContent(node));
 			if (node.data && typeof node.data === "object") {
 				if (typeof node.data.text === "string" && node.data.text.length > 0) out.push(node.data.text);
-				if (Array.isArray(node.data.content)) {
-					for (const block of node.data.content) {
-						if (typeof block === "string" && block.length > 0) out.push(block);
-						else if ((block.type === "text" || block.kind === "text") && typeof block.text === "string") out.push(block.text);
-					}
-				}
+				harvest(node.data.content);
 			}
 			return out;
 		}

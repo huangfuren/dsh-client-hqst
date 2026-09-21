@@ -1,0 +1,14 @@
+# dependencies
+node_modules/
+
+# npm artifacts
+*.tgz
+npm-debug.log*
+
+# editor / os
+.DS_Store
+Thumbs.db
+
+# test / build output
+coverage/
+*.tsbuildinfo

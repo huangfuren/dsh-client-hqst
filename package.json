@@ -1,19 +1,34 @@
 {
   "name": "dsh-conversation",
-  "description": "会话大纲面板（历史提问 + Markdown 标题树）：右上浮动面板，用户提问带序号与时间、助手标题按层级成树，支持层级滑块、搜索、收藏、复制、点击定位与阅读位置跟随。",
-  "version": "1.2.0",
+  "version": "1.2.1",
+  "description": "Conversation outline panel for the DSH web surface: user questions (index, time, per-turn stats) as level-0 nodes with the assistant reply's Markdown headings hanging beneath them — level slider, search scope, bookmarks, copy/export, section jump, keyboard nav and reading-position memory. Read-only UI: it never touches prompts, messages, tool results or provider traffic, and it writes nothing outside its own localStorage keys.",
   "type": "module",
-  "main": "lib/index.js",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh-CN.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "LICENSE"
+  ],
   "exports": {
-    ".": {
-      "default": "./lib/index.js"
-    },
-    "./client": {
-      "default": "./lib/client.js"
-    },
+    ".": "./index.js",
+    "./client": "./client.js",
     "./package.json": "./package.json"
   },
+  "scripts": {
+    "check": "node --check index.js && node --check client.js",
+    "test": "node --test",
+    "verify": "npm run check && npm test",
+    "prepack": "npm run verify"
+  },
   "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web"
     }
@@ -21,5 +36,32 @@
   "peerDependencies": {
     "react": "^18.2.0"
   },
-  "license": "MIT"
+  "engines": {
+    "node": ">=22.19",
+    "dsh": ">=0.1.5-rc.2 <1.0.0"
+  },
+  "keywords": [
+    "deepseek",
+    "harness",
+    "dsh",
+    "dsh-plugin",
+    "conversation",
+    "outline",
+    "navigation",
+    "minimap",
+    "ui"
+  ],
+  "author": "huangfuren",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huangfuren/dsh-conversation.git"
+  },
+  "homepage": "https://github.com/huangfuren/dsh-conversation#readme",
+  "bugs": {
+    "url": "https://github.com/huangfuren/dsh-conversation/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }
