@@ -1,7 +1,7 @@
 {
   "name": "dsh-conversation",
   "description": "会话大纲面板（历史提问 + Markdown 标题树）：右上浮动面板，用户提问带序号与时间、助手标题按层级成树，支持层级滑块、搜索、收藏、复制、点击定位与阅读位置跟随。",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
