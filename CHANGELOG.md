@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-21
+
 ### Fixed
 
 - **同一段正文被收取两次**（旧结构 `node.data.content` 形状）：`rowContent()` 取的正是

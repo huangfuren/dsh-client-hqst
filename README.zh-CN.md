@@ -75,7 +75,7 @@ Web 端「会话大纲」插件：在页面右上角贡献一个浮动面板，�
 优先用不可变 tag：
 
 ```sh
-dsh plugin --profile web add github:huangfuren/dsh-conversation#v1.2.1
+dsh plugin --profile web add github:huangfuren/dsh-conversation#v1.3.0
 ```
 
 跟踪开发分支（尚未发布 tag 时用这个）：
