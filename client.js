@@ -93,6 +93,43 @@ window.__ModuleLoader__.load({
         justify-content: center;
         color: var(--dsw-alias-state-business-primary, #4176e6);
       }
+      .dsh-conv-history-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 10px;
+        background: var(--dsw-alias-fill-tsp-quaternary, rgba(0, 0, 0, 0.02));
+        border-bottom: 1px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.05));
+        font-size: 11px;
+        color: var(--dsw-alias-label-tertiary, #65666b);
+      }
+      .dsh-conv-history-btns {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .dsh-conv-histbtn {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 2px 6px;
+        border: 1px solid var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.08));
+        border-radius: 4px;
+        background: var(--dsw-alias-bg-layer-1, #fff);
+        color: var(--dsw-alias-label-secondary, #3c3d43);
+        font-size: 11px;
+        cursor: pointer;
+        transition: background-color 0.15s ease, border-color 0.15s ease;
+      }
+      .dsh-conv-histbtn:hover:not(:disabled) {
+        background: var(--dsw-alias-interactive-bg-hover, rgba(38, 49, 72, 0.06));
+        border-color: var(--dsw-alias-state-business-primary, #4176e6);
+        color: var(--dsw-alias-state-business-primary, #4176e6);
+      }
+      .dsh-conv-histbtn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
       .dsh-conv-title {
         flex: 1;
         min-width: 0;
@@ -268,6 +305,13 @@ window.__ModuleLoader__.load({
         padding: 2px 6px 8px;
         scrollbar-width: thin;
         scrollbar-color: var(--dsw-alias-border-l3, rgba(0, 0, 0, 0.18)) transparent;
+      }
+      .dsh-conv-empty-tip {
+        margin-top: 8px;
+        font-size: 11px;
+        color: var(--dsw-alias-state-business-primary, #4176e6);
+        cursor: pointer;
+        text-decoration: underline;
       }
       .dsh-conv-list::-webkit-scrollbar { width: 8px; }
       .dsh-conv-list::-webkit-scrollbar-thumb {
@@ -639,7 +683,22 @@ window.__ModuleLoader__.load({
 			console.warn("[conversation] stylesheet injection failed; panel renders unstyled", e);
 		}
 
-		/** 面板三档尺寸：紧凑面板 / 加宽 / 全屏（贴右侧的整高面板）。 */
+		/** 面板侧停靠位置：right (默认靠右) | left (靠左，不挡右侧栏)。 */
+		function loadDockSide() {
+			try {
+				const val = window.localStorage.getItem("dsh-conversation.dock-side");
+				return val === "left" ? "left" : "right";
+			} catch (_) {
+				return "right";
+			}
+		}
+		function saveDockSide(side) {
+			try {
+				window.localStorage.setItem("dsh-conversation.dock-side", side === "left" ? "left" : "right");
+			} catch (_) {}
+		}
+
+		/** 面板三档尺寸：紧凑面板 / 加宽 / 全屏（贴边缘的整高面板）。 */
 		const VIEW_SIZES = {
 			panel: { width: 320, height: "min(75vh, calc(100vh - 100px))" },
 			wide: { width: 480, height: "min(82vh, calc(100vh - 90px))" },
@@ -686,6 +745,12 @@ window.__ModuleLoader__.load({
 			"action.scrollTop": "回到顶部",
 			"action.scrollBottom": "回到底部",
 			"action.unlocatable": "当前节点暂不可定位",
+			"history.hasMore": "历史会话未全部加载",
+			"history.loadOlder": "加载更早",
+			"history.loadAll": "加载全部",
+			"history.loading": "加载中…",
+			"panel.dockLeft": "靠左停靠",
+			"panel.dockRight": "靠右停靠",
 		};
 		const EN = {
 			"panel.title": "Questions · Outline",
@@ -722,6 +787,12 @@ window.__ModuleLoader__.load({
 			"action.scrollTop": "Scroll to top",
 			"action.scrollBottom": "Scroll to bottom",
 			"action.unlocatable": "This item is not available yet",
+			"history.hasMore": "History is partially loaded",
+			"history.loadOlder": "Load earlier",
+			"history.loadAll": "Load all",
+			"history.loading": "Loading…",
+			"panel.dockLeft": "Dock to left",
+			"panel.dockRight": "Dock to right",
 		};
 
 		function preferredLang() {
@@ -1361,6 +1432,8 @@ window.__ModuleLoader__.load({
 
 		function findChatScrollContainer(root) {
 			try {
+				const scrollAttr = document.querySelector("[data-conversation-scroll]");
+				if (scrollAttr instanceof HTMLElement) return scrollAttr;
 				return findScrollableAncestor(root.querySelector("[data-chat-flow-kind]"));
 			} catch (e) {
 				return null;
@@ -1435,6 +1508,12 @@ window.__ModuleLoader__.load({
 					if (el instanceof HTMLElement) return el;
 				} catch (e) { /* 非法选择器：换下一个候选 */ }
 			}
+			try {
+				const rows = document.querySelectorAll("[data-chat-anchor-key]");
+				for (const row of rows) {
+					if (row.getAttribute("data-chat-anchor-key") === String(key)) return row;
+				}
+			} catch (_) {}
 			return null;
 		}
 
@@ -1625,6 +1704,24 @@ window.__ModuleLoader__.load({
 		function OutlineGlyph() {
 			return h("svg", { width: "15", height: "15", viewBox: "0 0 14 14", fill: "none", "aria-hidden": "true" },
 				h("path", { d: "M2 3.5h10M2 7h6.5M2 10.5h8.5", stroke: "currentColor", strokeWidth: "1.5", strokeLinecap: "round" }));
+		}
+
+		function DockSideGlyph(props) {
+			return h("svg", {
+				viewBox: "0 0 16 16",
+				width: 14,
+				height: 14,
+				fill: "none",
+				stroke: "currentColor",
+				strokeWidth: 1.6,
+				strokeLinecap: "round",
+				strokeLinejoin: "round",
+				"aria-hidden": true,
+			},
+				h("rect", { x: 2, y: 2, width: 12, height: 12, rx: 2 }),
+				props && props.side === "left"
+					? h("line", { x1: 6, y1: 2, x2: 6, y2: 14 })
+					: h("line", { x1: 10, y1: 2, x2: 10, y2: 14 }));
 		}
 
 		function GitHubGlyph() {
@@ -1898,7 +1995,12 @@ window.__ModuleLoader__.load({
 				onMouseEnter: (e) => {
 					if (props.previewSetter === undefined) return;
 					const rect = e.currentTarget.getBoundingClientRect();
-					props.previewSetter({ node, x: rect.right + 8, y: rect.top });
+					const placeLeft = rect.left > window.innerWidth / 2;
+					props.previewSetter({
+						node,
+						x: placeLeft ? Math.max(10, rect.left - 350) : rect.right + 8,
+						y: rect.top,
+					});
 				},
 				onMouseLeave: () => {
 					if (props.previewSetter !== undefined) props.previewSetter(null);
@@ -1975,6 +2077,38 @@ window.__ModuleLoader__.load({
 				? sessionId
 				: (typeof safeProps.useSessions === "function" ? safeProps.useSessions((s) => s?.current) : undefined)
 				?? "default-session";
+
+			const hasMore = typeof useSession === "function" ? useSession((s) => s?.hasMore === true) : false;
+			const loadingOlder = typeof useSession === "function" ? useSession((s) => s?.loadingOlder === true) : false;
+			const [loadingAll, setLoadingAll] = useState(false);
+
+			const onLoadOlder = useCallback(() => {
+				const sid = sessionId || currentId;
+				if (!safeProps.sessions || typeof safeProps.sessions.binding !== "function" || !sid) return;
+				const b = safeProps.sessions.binding(sid);
+				if (b && b.session && typeof b.session.loadOlder === "function") {
+					b.session.loadOlder().catch((err) => console.warn("[conversation] loadOlder failed", err));
+				}
+			}, [safeProps.sessions, sessionId, currentId]);
+
+			const onLoadAll = useCallback(async () => {
+				const sid = sessionId || currentId;
+				if (!safeProps.sessions || typeof safeProps.sessions.binding !== "function" || !sid || loadingAll) return;
+				const b = safeProps.sessions.binding(sid);
+				if (!b || !b.session || typeof b.session.loadOlder !== "function") return;
+				setLoadingAll(true);
+				try {
+					let count = 0;
+					while (b.session.getSnapshot()?.hasMore === true && count < 100) {
+						await b.session.loadOlder();
+						count += 1;
+					}
+				} catch (err) {
+					console.warn("[conversation] loadAll failed", err);
+				} finally {
+					setLoadingAll(false);
+				}
+			}, [safeProps.sessions, sessionId, currentId, loadingAll]);
 
 			const [copied, setCopied] = useState(false);
 			const copiedTimer = useRef(0);
@@ -2276,9 +2410,19 @@ window.__ModuleLoader__.load({
 			const activeTickId = state === undefined ? null : topLevelId(state.tree, activeIdRef.current);
 
 			const size = VIEW_SIZES[chrome.view] === undefined ? VIEW_SIZES.panel : VIEW_SIZES[chrome.view];
+			const [dockSide, setDockSide] = useState(() => loadDockSide());
+			const onToggleDockSide = useCallback(() => {
+				const next = dockSide === "left" ? "right" : "left";
+				setDockSide(next);
+				saveDockSide(next);
+				store.set({ left: undefined, top: undefined });
+			}, [dockSide, store]);
+
 			const panelStyle = typeof chrome.left === "number" && typeof chrome.top === "number"
 				? { width: size.width, height: size.height, left: chrome.left, top: chrome.top }
-				: { width: size.width, height: size.height, right: 16, top: chrome.view === "full" ? 28 : 72 };
+				: (dockSide === "left"
+					? { width: size.width, height: size.height, left: 16, top: chrome.view === "full" ? 28 : 72 }
+					: { width: size.width, height: size.height, right: 16, top: chrome.view === "full" ? 28 : 72 });
 
 			const allExpanded = state !== undefined && state.isAllExpanded === true;
 			const bookmarkMode = state !== undefined && state.bookmarkMode === true;
@@ -2296,7 +2440,11 @@ window.__ModuleLoader__.load({
 				? [h("div", { key: "empty", className: "dsh-conv-empty" },
 					h("span", { className: "dsh-conv-emptyglyph" }, h(OutlineGlyph)),
 					h("div", null, t("panel.empty")),
-					h("div", { className: "dsh-conv-emptyhint" }, t("panel.emptyHint")))]
+					h("div", { className: "dsh-conv-emptyhint" }, t("panel.emptyHint")),
+					hasMore ? h("div", {
+						className: "dsh-conv-empty-tip",
+						onClick: onLoadOlder,
+					}, "↳ " + t("history.loadOlder")) : null)]
 				: state.visible.map((node) => h(OutlineRow, {
 					key: node.id,
 					node,
@@ -2325,6 +2473,14 @@ window.__ModuleLoader__.load({
 					h("button", {
 						type: "button",
 						className: "dsh-conv-iconbtn",
+						title: dockSide === "left" ? t("panel.dockRight") : t("panel.dockLeft"),
+						"aria-label": dockSide === "left" ? t("panel.dockRight") : t("panel.dockLeft"),
+						onPointerDown: (e) => e.stopPropagation(),
+						onClick: onToggleDockSide,
+					}, h(DockSideGlyph, { side: dockSide })),
+					h("button", {
+						type: "button",
+						className: "dsh-conv-iconbtn",
 						title: viewLabel,
 						"aria-label": viewLabel,
 						onPointerDown: (e) => e.stopPropagation(),
@@ -2346,6 +2502,21 @@ window.__ModuleLoader__.load({
 						"aria-label": t("panel.collapse"),
 						onClick: () => store.set({ pinned: false }),
 					}, h(CloseGlyph))),
+				hasMore ? h("div", { className: "dsh-conv-history-bar" },
+					h("span", null, loadingOlder || loadingAll ? t("history.loading") : t("history.hasMore")),
+					h("div", { className: "dsh-conv-history-btns" },
+						h("button", {
+							type: "button",
+							className: "dsh-conv-histbtn",
+							disabled: loadingOlder || loadingAll,
+							onClick: onLoadOlder,
+						}, t("history.loadOlder")),
+						h("button", {
+							type: "button",
+							className: "dsh-conv-histbtn",
+							disabled: loadingOlder || loadingAll,
+							onClick: onLoadAll,
+						}, t("history.loadAll")))) : null,
 				h("div", { className: "dsh-conv-toolbar" },
 					h("button", {
 						type: "button",
@@ -2434,15 +2605,7 @@ window.__ModuleLoader__.load({
 							const root = findChatRoot();
 							if (root !== null) scrollChatToBottom(root);
 						},
-					}, h(ScrollBottomGlyph), t("action.scrollBottom")),
-					h("button", {
-						type: "button",
-						className: "dsh-conv-footbtn",
-						title: chrome.rail === true ? t("panel.railHide") : t("panel.railShow"),
-						"aria-label": chrome.rail === true ? t("panel.railHide") : t("panel.railShow"),
-						"aria-pressed": chrome.rail === true,
-						onClick: () => store.set({ rail: chrome.rail !== true }),
-					}, h(OutlineGlyph))),
+					}, h(ScrollBottomGlyph), t("action.scrollBottom"))),
 				unlocatable ? h("div", { className: "dsh-conv-toast", role: "status" }, t("action.unlocatable")) : null,
 				previewNode !== null
 					? h("div", {
@@ -2525,8 +2688,6 @@ window.__ModuleLoader__.load({
 				}, h(OutlineGlyph), h("span", { style: { marginLeft: 4 } }, t("panel.title"))),
 
 				pinned ? h(HistoryOutlinePanelInner, safeProps) : null,
-
-				(!pinned && chrome.rail === true) ? h(HistoryOutlineRailWrapper, safeProps) : null,
 			]);
 		}
 
